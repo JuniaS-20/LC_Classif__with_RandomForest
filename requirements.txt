@@ -1,0 +1,9 @@
+rasterio
+geopandas
+numpy
+scikit-learn
+matplotlib
+seaborn
+tqdm
+scipy
+joblib
