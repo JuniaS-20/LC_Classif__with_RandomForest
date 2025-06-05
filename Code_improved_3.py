@@ -28,7 +28,7 @@ with rasterio.open(image_paths[0]) as src_ref:
     crs_raster = src_ref.crs
     profile = src_ref.profile
 
-if gdf.crs != crs_raster:
+if gdf.crs != crs_raster: # === Reprojeter le shapefile au même CRS que le raster ===
     gdf = gdf.to_crs(crs_raster)
 
 features, labels = [], []
