@@ -15,20 +15,20 @@ from rasterio.enums import ColorInterp
 from scipy.ndimage import median_filter
 import joblib
 
-# === 1. Lecture des donnees ===
+# === 1. Reading data ===
 image_paths = ['S2A_MSIL2A_20230706T080611_N0509_R078_T35LNH_20230706T120603.vrt','S2A_MSIL2A_20230127T081211_N0509_R078_T35LNG_20230127T120321.vrt']  # Ajouter d'autres rasters ici si besoin
 shapefile_path = 'labels.shp'
 
 gdf = gpd.read_file(shapefile_path)
 
-# === 2. Extraction des features et labels ===
+# === 2. Extraction of features and labels ===
 with rasterio.open(image_paths[0]) as src_ref:
     bands = src_ref.read()
     transform = src_ref.transform
     crs_raster = src_ref.crs
     profile = src_ref.profile
 
-if gdf.crs != crs_raster: # === Reprojeter le shapefile au même CRS que le raster ===
+if gdf.crs != crs_raster: # === Reproject the shapefile to the same CRS as the raster ===
     gdf = gdf.to_crs(crs_raster)
 
 features, labels = [], []
@@ -45,21 +45,21 @@ for idx, row in gdf.iterrows():
 X = np.array(features)
 y = np.array(labels)
 
-# === 3. Pretraitement ===
+# === 3. pre-processing ===
 scaler = StandardScaler()
 X_scaled = scaler.fit_transform(X)
 
-# === 4. Validation croisee ===
+# === 4. cross-validation ===
 skf = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
 model = RandomForestClassifier(n_estimators=100, max_depth=20, random_state=42)
 cv_scores = cross_val_score(model, X_scaled, y, cv=skf, scoring='accuracy')
 print("Validation croisee - Accuracy moyenne :", np.mean(cv_scores))
 
-# === 5. Entrainement final ===
+# === 5. final training ===
 X_train, X_test, y_train, y_test = train_test_split(X_scaled, y, test_size=0.2, stratify=y, random_state=42)
 model.fit(X_train, y_train)
 
-# Sauvegarde du modele
+# Save model
 joblib.dump(model, "trained_model_RF.joblib")
 joblib.dump(scaler, "scaler_RF.joblib")
 print("→ Modele et scaler sauvegardes.")
@@ -68,7 +68,7 @@ y_pred = model.predict(X_test)
 print("Accuracy test:", accuracy_score(y_test, y_pred))
 print("Classification report:\n", classification_report(y_test, y_pred))
 
-# === 6. Matrice de confusion ===
+# === 6. Confusion matrix ===
 cm = confusion_matrix(y_test, y_pred)
 plt.figure(figsize=(8, 6))
 sns.heatmap(cm, annot=True, fmt="d", cmap="Blues", xticklabels=np.unique(y), yticklabels=np.unique(y))
@@ -79,7 +79,7 @@ plt.tight_layout()
 plt.savefig("confusion_matrix_RF.png")
 plt.close()
 
-# === 7. Classification par lot ===
+# === 7. Batch classification ===
 colormap = {
     0: (255, 255, 255),
     1: (0, 255, 0),
@@ -128,7 +128,7 @@ for image_path in image_paths:
         dst.colorinterp = [ColorInterp.palette]
     print(f"→ Raster classifie exporte : {out_path}")
 
-    # Apercu PNG
+    # PNG preview
     cmap = mcolors.ListedColormap([np.array(colormap[i])/255 for i in sorted(colormap.keys())])
     bounds = [i - 0.5 for i in range(1, len(colormap) + 2)]
     norm = mcolors.BoundaryNorm(bounds, cmap.N)
@@ -142,7 +142,7 @@ for image_path in image_paths:
     plt.close()
     print(f"→ Apercu PNG exporte : {preview_path}")
 
-# === 8. QML et Legende ===
+# === 8. QML and Legend ===
 qml_content = f"""<?xml version=\"1.0\" encoding=\"UTF-8\"?>
 <!DOCTYPE qgis PUBLIC 'http://mrcc.com/qgis.dtd' 'SYSTEM'>
 <qgis styleCategories=\"AllStyleCategories\" version=\"3.16\">
